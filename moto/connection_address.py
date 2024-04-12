@@ -26,7 +26,7 @@ class ConnectionAddress:
         timestamp = datetime.now(timezone.utc)
 
         return (
-            Point("info")
+            Point("connection")
             .time(timestamp)
             .tag("mac", self.mac)
             .tag("ipv4", self.ipv4)

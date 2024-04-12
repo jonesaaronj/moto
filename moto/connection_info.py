@@ -25,7 +25,7 @@ class ConnectionInfo:
         timestamp = datetime.now(timezone.utc)
 
         return (
-            Point("info")
+            Point("connection")
             .time(timestamp)
             .tag("uptime_seconds", self.uptime_seconds)
             .tag("network_access", self.network_access)
