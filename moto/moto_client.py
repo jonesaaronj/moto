@@ -12,6 +12,9 @@ from typing import Generator
 import urllib3
 from requests import Session
 
+from .connection_address import ConnectionAddress
+from .connection_home import ConnectionHome
+from .connection_info import ConnectionInfo
 from .downstream_channel import DownstreamChannel
 from .modem_log import ModemLog
 from .upstream_channel import UpstreamChannel
@@ -122,6 +125,31 @@ class MotoClient:
         response = self._do_action("GetMotoStatusUpstreamChannelInfo", {})
 
         return UpstreamChannel.from_response(response["MotoConnUpstreamChannel"])
+
+    def get_connection_info(self) -> ConnectionInfo:
+        """
+        Get connection info from the modem.
+        """
+        response = self._do_action("GetMotoStatusConnectionInfo", {})
+
+        return ConnectionInfo.from_response(response)
+
+    def get_connection_home(self):
+        """
+        Get connection home from the modem.
+        """
+        response = self._do_action("GetHomeConnection", {})
+
+        return ConnectionHome.from_response(response)
+
+
+    def get_connection_address(self):
+        """
+        Get connection address from the modem.
+        """
+        response = self._do_action("GetHomeAddress", {})
+
+        return ConnectionAddress.from_response(response)
 
     @property
     def _cookies(self):

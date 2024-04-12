@@ -3,11 +3,13 @@ Command line interface.
 """
 import logging
 from time import sleep
+from typing import Annotated
 
 from rich.progress import Progress
 from rich.table import Table
 from schedule import every, run_pending
 from typer import Typer
+import typer
 
 from .influx_client import InfluxClient
 from .moto_client import MotoClient
@@ -30,11 +32,124 @@ def _get_logs(moto, progress):
     return logs
 
 
+def _print_logs(logs, progress):
+    table = Table(
+        "timestamp"
+        "level",
+        "message",
+        title="Logs",
+    )
+    for log in sorted(logs):
+        table.add_row(
+            str(log.timestamp),
+            log.level,
+            log.message,
+        )
+
+    progress.console.print(table)
+
+
 def _ingest_logs(logs, influx, progress):
     task = progress.add_task("Ingesting logs...", total=len(logs))
     for l in logs:  # pylint: disable=invalid-name
         influx.ingest(l)
         progress.update(task, advance=1)
+
+
+def _get_connection_info(moto, progress):
+    task = progress.add_task("Downloading connection info...", total=None)
+    info = moto.get_connection_info()
+    progress.update(task, total=1, completed=1)
+    return info
+
+
+def _print_connection_info(info, progress):
+    table = Table(
+        "Uptime Seconds",
+        "Network Access",
+        "Connection Status",
+        title="Connection Info",
+    )
+
+    table.add_row(
+        str(info.uptime_seconds),
+        info.network_access,
+        info.connection_status,
+    )
+
+    progress.console.print(table)
+
+
+def _ingest_connection_info(info, influx, progress):
+    task = progress.add_task("Ingesting connection info...")
+    influx.ingest(info)
+    progress.update(task)
+
+
+def _get_connection_home(moto, progress):
+    task = progress.add_task("Downloading connection home...", total=None)
+    home = moto.get_connection_home()
+    progress.update(task, total=1, completed=1)
+    return home
+
+
+def _print_connection_home(home, progress):
+    table = Table(
+        "Online",
+        "Status",
+        "Down Channels",
+        "Up Channels",
+        title="Connection Home",
+    )
+
+    table.add_row(
+        home.online,
+        home.status,
+        str(home.down_channels),
+        str(home.up_channels),
+    )
+
+    progress.console.print(table)
+
+
+def _ingest_connection_home(home, influx, progress):
+    task = progress.add_task("Ingesting connection home...")
+    influx.ingest(home)
+    progress.update(task)
+
+
+def _get_connection_address(moto, progress):
+    task = progress.add_task("Downloading connection address...", total=None)
+    address = moto.get_connection_address()
+    progress.update(task, total=1, completed=1)
+    return address
+
+
+def _print_connection_address(address, progress):
+    table = Table(
+        "MAC",
+        "IPV4",
+        "IPV6",
+        "Version",
+        "Result",
+        title="Connection Address",
+    )
+
+    table.add_row(
+        address.mac,
+        address.ipv4,
+        address.ipv6,
+        address.version,
+        address.result,
+    )
+
+    progress.console.print(table)
+
+
+def _ingest_connection_address(address, influx, progress):
+    task = progress.add_task("Ingesting connection address...")
+    influx.ingest(address)
+    progress.update(task)
 
 
 def _get_downstream_channels(moto, progress):
@@ -124,7 +239,10 @@ def _print_upstream_channels(channels, progress):
 
 
 @app.command()
-def read():
+def read(
+    info: Annotated[bool, typer.Option("--info")] = False,
+    logs: Annotated[bool, typer.Option("--logs")] = False
+):
     """
     Read logs and levels from the modem and ingest them into InfluxDB.
     """
@@ -134,8 +252,15 @@ def read():
     with Progress() as progress:
         _login(moto, progress)
 
-        logs = _get_logs(moto, progress)
-        _ingest_logs(logs, influx, progress)
+        if info:
+            home = _get_connection_home(moto, progress)
+            _ingest_connection_home(home, progress)
+
+            info = _get_connection_info(moto, progress)
+            _ingest_connection_info(info, progress)
+
+            address = _get_connection_address(moto, progress)
+            _ingest_connection_address(address, progress)
 
         channels = _get_downstream_channels(moto, progress)
         _ingest_downstream_channels(channels, influx, progress)
@@ -143,9 +268,16 @@ def read():
         channels = _get_upstream_channels(moto, progress)
         _ingest_upstream_channels(channels, influx, progress)
 
+        if logs:
+            logs = _get_logs(moto, progress)
+            _ingest_logs(logs, influx, progress)
+
 
 @app.command()
-def dump():
+def dump(
+    info: Annotated[bool, typer.Option("--info")] = False,
+    logs: Annotated[bool, typer.Option("--logs")] = False
+):
     """
     Read levels from the modem and print them to the console.
     """
@@ -154,14 +286,28 @@ def dump():
     with Progress() as progress:
         _login(moto, progress)
 
+        if info:
+            home = _get_connection_home(moto, progress)
+            _print_connection_home(home, progress)
+
+            info = _get_connection_info(moto, progress)
+            _print_connection_info(info, progress)
+
+            address = _get_connection_address(moto, progress)
+            _print_connection_address(address, progress)
+
         channels = _get_downstream_channels(moto, progress)
         _print_downstream_channels(channels, progress)
 
         channels = _get_upstream_channels(moto, progress)
         _print_upstream_channels(channels, progress)
 
+        if logs:
+            logs = _get_logs(moto, progress)
+            _print_logs(logs, progress)
 
-def _ingest():
+
+def _ingest(info: bool = False, logs: bool = False):
     influx = InfluxClient()
     moto = MotoClient()
 
@@ -172,12 +318,27 @@ def _ingest():
     except:  # pylint: disable=bare-except
         log.exception("failed to log in")
 
-    try:
-        log.info("getting logs")
-        for l in moto.get_logs():  # pylint: disable=invalid-name
-            influx.ingest(l)
-    except:  # pylint: disable=bare-except
-        log.exception("failed to get logs")
+    if info:
+        try:
+            log.info("getting connection info")
+            info = moto.get_connection_info()
+            influx.ingest(info)
+        except:  # pylint: disable=bare-except
+            log.exception("failed to get connection info")
+
+        try:
+            log.info("getting connection home")
+            home = moto.get_connection_home()
+            influx.ingest(home)
+        except:  # pylint: disable=bare-except
+            log.exception("failed to get connection home")
+
+        try:
+            log.info("getting connection address")
+            address = moto.get_connection_address()
+            influx.ingest(address)
+        except:  # pylint: disable=bare-except
+            log.exception("failed to get connection address")
 
     try:
         log.info("getting downstream channels")
@@ -193,13 +354,23 @@ def _ingest():
     except:  # pylint: disable=bare-except
         log.exception("failed to get upstream channels")
 
+    if logs:
+        try:
+            log.info("getting logs")
+            for l in moto.get_logs():  # pylint: disable=invalid-name
+                influx.ingest(l)
+        except:  # pylint: disable=bare-except
+            log.exception("failed to get logs")
 
 @app.command()
-def run():
+def run(
+    info: Annotated[bool, typer.Option("--info")] = False,
+    logs: Annotated[bool, typer.Option("--logs")] = False
+):
     """
     Run forever, reading periodically and ingesting to InfluxDB.
     """
-    every().minute.do(_ingest)
+    every().minute.do(lambda: _ingest(info, logs))
 
     while True:
         run_pending()
