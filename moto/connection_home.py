@@ -26,7 +26,7 @@ class ConnectionHome:
         timestamp = datetime.now(timezone.utc)
 
         return (
-            Point("info")
+            Point("connection")
             .time(timestamp)
             .tag("online", self.online)
             .tag("status", self.status)
