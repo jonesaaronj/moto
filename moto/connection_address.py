@@ -26,13 +26,13 @@ class ConnectionAddress:
         timestamp = datetime.now(timezone.utc)
 
         return (
-            Point("connection")
+            Point("connection_address")
             .time(timestamp)
-            .tag("mac", self.mac)
-            .tag("ipv4", self.ipv4)
-            .tag("ipv6", self.ipv6)
-            .tag("version", self.version)
-            .tag("result", self.result)
+            .field("mac", self.mac)
+            .field("ipv4", self.ipv4)
+            .field("ipv6", self.ipv6)
+            .field("version", self.version)
+            .field("result", self.result)
         )
 
     @classmethod

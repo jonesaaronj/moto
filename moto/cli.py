@@ -83,7 +83,7 @@ def _print_connection_info(info, progress):
 def _ingest_connection_info(info, influx, progress):
     task = progress.add_task("Ingesting connection info...")
     influx.ingest(info)
-    progress.update(task)
+    progress.update(task, total=1, completed=1)
 
 
 def _get_connection_home(moto, progress):
@@ -115,7 +115,7 @@ def _print_connection_home(home, progress):
 def _ingest_connection_home(home, influx, progress):
     task = progress.add_task("Ingesting connection home...")
     influx.ingest(home)
-    progress.update(task)
+    progress.update(task, total=1, completed=1)
 
 
 def _get_connection_address(moto, progress):
@@ -149,7 +149,7 @@ def _print_connection_address(address, progress):
 def _ingest_connection_address(address, influx, progress):
     task = progress.add_task("Ingesting connection address...")
     influx.ingest(address)
-    progress.update(task)
+    progress.update(task, total=1, completed=1)
 
 
 def _get_downstream_channels(moto, progress):
@@ -254,13 +254,13 @@ def read(
 
         if info:
             home = _get_connection_home(moto, progress)
-            _ingest_connection_home(home, progress)
+            _ingest_connection_home(home, influx, progress)
 
             info = _get_connection_info(moto, progress)
-            _ingest_connection_info(info, progress)
+            _ingest_connection_info(info, influx, progress)
 
             address = _get_connection_address(moto, progress)
-            _ingest_connection_address(address, progress)
+            _ingest_connection_address(address, influx, progress)
 
         channels = _get_downstream_channels(moto, progress)
         _ingest_downstream_channels(channels, influx, progress)

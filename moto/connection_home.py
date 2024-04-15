@@ -26,12 +26,12 @@ class ConnectionHome:
         timestamp = datetime.now(timezone.utc)
 
         return (
-            Point("connection")
+            Point("connection_home")
             .time(timestamp)
-            .tag("online", self.online)
-            .tag("status", self.status)
-            .tag("down_channels", self.down_channels)
-            .tag("up_channels", self.up_channels)
+            .field("online", self.online)
+            .field("status", self.status)
+            .field("down_channels", self.down_channels)
+            .field("up_channels", self.up_channels)
         )
 
     @classmethod
